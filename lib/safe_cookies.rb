@@ -100,7 +100,7 @@ module SafeCookies
         # It contains more information than the "HTTP_COOKIE" header from the
         # browser's request contained, so a `Rack::Request` can't parse it for
         # us. A `Rack::Response` doesn't offer a way either.
-        headers['Set-Cookie'] = cookies.join(",") # cookies are comma-separated
+        headers['Set-Cookie'] = cookies.join("\n")
       end
     end
     
