@@ -30,7 +30,7 @@ describe SafeCookies::Middleware do
       # second request: do not rewrite cookie again
       subject = described_class.new(app, :foo => 24 * 60 * 60)
       app.should_receive(:call).and_return([ stub, {}, stub ])
-      received_cookies = headers['Set-Cookie'].scan(/[^,;]+=[^,;]+(?=;\s)/i) # extract cookies
+      received_cookies = headers['Set-Cookie'].scan(/[^\n;]+=[^\n;]+(?=;\s)/i) # extract cookies
       env['HTTP_COOKIE'] = received_cookies.join(',')
 
       code, headers, response = subject.call(env)
@@ -42,14 +42,14 @@ describe SafeCookies::Middleware do
     app.should_receive(:call).and_return([ stub, { 'Set-Cookie' => 'neuer_cookie=neuer_cookie_wert'}, stub ])
     
     code, headers, response = subject.call(env)
-    headers['Set-Cookie'].should =~ /neuer_cookie=neuer_cookie_wert;[^\n]* secure/
+    headers['Set-Cookie'].should =~ /neuer_cookie=neuer_cookie_wert;.* secure/
   end
   
   it "should make new cookies http_only" do
     app.should_receive(:call).and_return([ stub, { 'Set-Cookie' => 'neuer_cookie=neuer_cookie_wert'}, stub ])
     
     code, headers, response = subject.call(env)
-    headers['Set-Cookie'].should =~ /neuer_cookie=neuer_cookie_wert;[^\n]* HttpOnly/
+    headers['Set-Cookie'].should =~ /neuer_cookie=neuer_cookie_wert;.* HttpOnly/
   end
   
   it "should not make new cookies secure that are specified as 'non_secure'" do
@@ -85,8 +85,8 @@ describe SafeCookies::Middleware do
     
     code, headers, response = subject.call(env)
     set_cookie = headers['Set-Cookie'].gsub(/,(?=\s\d)/, '') # remove commas in expiry dates to simplify matching below
-    set_cookie.should =~ /filter=cars_only;[^,]* HttpOnly/
-    set_cookie.should_not match(/filter=cars_only;[^,]* secure/)
+    set_cookie.should =~ /filter=cars_only;.* HttpOnly/
+    set_cookie.should_not match(/filter=cars_only;.* secure/)
   end
   
   it "should not make existing cookies http_only that are specified as 'non_http_only'" do
@@ -95,9 +95,9 @@ describe SafeCookies::Middleware do
     env['HTTP_COOKIE'] = 'js_data=json'
     
     code, headers, response = subject.call(env)
-    set_cookie = headers['Set-Cookie'].gsub(/,(?=\s\d)/, '') # remove commas in expiry dates to simplify matching below
-    set_cookie.should =~ /js_data=json;[^,]* secure/
-    set_cookie.should_not match(/js_data=json;[^,]* HttpOnly/)
+    set_cookie = headers['Set-Cookie']
+    set_cookie.should =~ /js_data=json;.* secure/
+    set_cookie.should_not match(/js_data=json;.* HttpOnly/)
   end
   
   it "should not make cookies secure if the request was not secure" do
