@@ -21,6 +21,8 @@ module SafeCookies
       # The :non_http_only option is analog, use it for storing data you want to access
       # with javascript.
 
+      options = options.dup
+
       @app = app
       @non_secure = (options.delete(:non_secure) || []).map(&:to_s)
       @non_http_only = (options.delete(:non_http_only) || []).map(&:to_s)

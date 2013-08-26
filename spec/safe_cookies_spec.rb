@@ -110,4 +110,13 @@ describe SafeCookies::Middleware do
     headers['Set-Cookie'].should_not match(/secure/i)
   end
 
+  it 'does not mutate an options hash passed to it' do
+    options = { :cookie1 => 3600, :non_secure => [:cookie2], :non_http_only => [:cookie3] }
+    described_class.new(app, options)
+
+    options[:cookie1].should == 3600
+    options[:non_secure].should == [:cookie2]
+    options[:non_http_only].should == [:cookie3]
+  end
+
 end
