@@ -119,4 +119,18 @@ describe SafeCookies::Middleware do
     options[:non_http_only].should == [:cookie3]
   end
 
+  it 'sets cookies on the root path (if no "path" is supplied, browsers assume the current)' do
+    subject = described_class.new(app, :my_old_cookie => 3600)
+    env['HTTP_COOKIE'] = 'my_old_cookie=foobar'
+    app.should_receive(:call).and_return([ stub, {}, stub ])
+
+    code, headers, response = subject.call(env)
+
+    cookies = headers['Set-Cookie'].split("\n")
+    cookies.size.should > 0
+    cookies.each do |cookie|
+      cookie.should include('; path=/;')
+    end
+  end
+
 end

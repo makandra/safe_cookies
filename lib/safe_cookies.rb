@@ -74,6 +74,7 @@ module SafeCookies
 
     def set_secure_cookie!(headers, key, value, expire_after = 365 * 24 * 60 * 60) # one year
       options = {
+        :path => '/',
         :value => value,
         :secure => secure?(key),
         :httponly => http_only?(key),
