@@ -4,8 +4,8 @@ require File.expand_path('../lib/safe_cookies/version', __FILE__)
 Gem::Specification.new do |gem|
   gem.authors       = ["Dominik Schöler"]
   gem.email         = ["dominik.schoeler@makandra.de"]
-  gem.description   = %q{Make cookies as `secure` and `HttpOnly` as possible.}
-  gem.summary       = %q{Make cookies as `secure` and `HttpOnly` as possible.}
+  gem.description   = %q{Make all cookies `secure` and `HttpOnly`.}
+  gem.summary       = %q{Make all cookies `secure` and `HttpOnly`.}
   gem.homepage      = "http://www.makandra.de"
 
   gem.files         = `git ls-files`.split($\)

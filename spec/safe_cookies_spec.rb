@@ -1,136 +1,229 @@
 # -*- encoding: utf-8 -*-
 require 'spec_helper'
 
-# Explanation:
-# app#call(env) is how the middleware calls the app
-#   returns the app's response
-# subject#call(env) is how the middleware is called "from below"
-#   returns the response that is passed through the web server to the client
-
 describe SafeCookies::Middleware do
   
+  subject { described_class.new(app) }
   let(:app) { stub 'application' }
   let(:env) { { 'HTTPS' => 'on' } }
-  subject { described_class.new(app) }
- 
-  it 'should rewrite specified existing cookies as "secure" and "HttpOnly", but only once' do
-    Timecop.freeze do
-      # first request: rewrite cookie
-      subject = described_class.new(app, :foo => 24 * 60 * 60)
-      app.should_receive(:call).and_return([ stub, {}, stub ])
-      env['HTTP_COOKIE'] = 'foo=bar'
-    
-      code, headers, response = subject.call(env)
-      expected_expiry = Rack::Utils.rfc2822((Time.now + 24 * 60 * 60).gmtime) # a special date format needed here
-      headers['Set-Cookie'].should =~ /foo=bar;[^\n]* HttpOnly/
-      headers['Set-Cookie'].should =~ /foo=bar;[^\n]* secure/
-      headers['Set-Cookie'].should =~ /expires=#{expected_expiry}/
-      headers['Set-Cookie'].should =~ /secured_old_cookies=/ # the indication cookie
-      
-      # second request: do not rewrite cookie again
-      subject = described_class.new(app, :foo => 24 * 60 * 60)
-      app.should_receive(:call).and_return([ stub, {}, stub ])
-      received_cookies = headers['Set-Cookie'].scan(/[^\n;]+=[^\n;]+(?=;\s)/i) # extract cookies
-      env['HTTP_COOKIE'] = received_cookies.join(',')
-
-      code, headers, response = subject.call(env)
-      headers['Set-Cookie'].to_s.should == ""
+  
+  it 'should rewrite registered request cookies as secure and http-only, but only once' do
+    SafeCookies.configure do |config|
+      config.register_cookie('foo', :expire_after => 3600)
     end
-  end
+
+    # first request: rewrite cookie
+    stub_app_call(app)
+    set_request_cookies(env, 'foo=bar')
   
-  it "should make new cookies secure" do
-    app.should_receive(:call).and_return([ stub, { 'Set-Cookie' => 'neuer_cookie=neuer_cookie_wert'}, stub ])
-    
     code, headers, response = subject.call(env)
-    headers['Set-Cookie'].should =~ /neuer_cookie=neuer_cookie_wert;.* secure/
-  end
-  
-  it "should make new cookies http_only" do
-    app.should_receive(:call).and_return([ stub, { 'Set-Cookie' => 'neuer_cookie=neuer_cookie_wert'}, stub ])
+    headers['Set-Cookie'].should =~ /foo=bar;.* secure; HttpOnly/
     
-    code, headers, response = subject.call(env)
-    headers['Set-Cookie'].should =~ /neuer_cookie=neuer_cookie_wert;.* HttpOnly/
-  end
-  
-  it "should not make new cookies secure that are specified as 'non_secure'" do
-    subject = described_class.new(app, :non_secure => %w[filter-settings])
-    app.should_receive(:call).and_return([ stub, { 'Set-Cookie' => 'filter-settings=sort_by_date'}, stub ])
+    # second request: do not rewrite cookie again
+    received_cookies = extract_cookies(headers['Set-Cookie'])
+    received_cookies.should include('foo=bar') # sanity check
     
-    code, headers, response = subject.call(env)
-    headers['Set-Cookie'].should include("filter-settings=sort_by_date")
-    headers['Set-Cookie'].should_not match(/secure/i)
-  end
-  
-  it "should not make new cookies http_only that are specified as 'non_http_only'" do
-    subject = described_class.new(app, :non_http_only => %w[javascript-cookie])
-    app.should_receive(:call).and_return([ stub, { 'Set-Cookie' => 'javascript-cookie=xss'}, stub ])
+    # client returns with the cookies, `app` and `subject` are different
+    # objects than in the previous request
+    other_app = stub('application')
+    other_subject = described_class.new(other_app)
     
-    code, headers, response = subject.call(env)
-    headers['Set-Cookie'].should include("javascript-cookie=xss")
-    headers['Set-Cookie'].should_not match(/HttpOnly/i)
-  end
-  
-  it "should prefer the application's cookie if both client and app are sending one" do
-    app.should_receive(:call).and_return([ stub, { 'Set-Cookie' => 'cookie=überschrieben'}, stub ])
-    env['HTTP_COOKIE'] = 'cookie=wert'
-    
-    code, headers, response = subject.call(env)
-    headers['Set-Cookie'].should include("cookie=überschrieben")
+    stub_app_call(other_app)
+    set_request_cookies(env, *received_cookies)
+
+    code, headers, response = other_subject.call(env)
+    headers['Set-Cookie'].to_s.should == ''
   end
 
-  it "should not make existing cookies secure that are specified as 'non_secure'" do
-    subject = described_class.new(app, :filter => 24 * 60 * 60, :non_secure => %w[filter])
-    app.should_receive(:call).and_return([ stub, {}, stub ])
-    env['HTTP_COOKIE'] = 'filter=cars_only'
-    
-    code, headers, response = subject.call(env)
-    set_cookie = headers['Set-Cookie'].gsub(/,(?=\s\d)/, '') # remove commas in expiry dates to simplify matching below
-    set_cookie.should =~ /filter=cars_only;.* HttpOnly/
-    set_cookie.should_not match(/filter=cars_only;.* secure/)
-  end
-  
-  it "should not make existing cookies http_only that are specified as 'non_http_only'" do
-    subject = described_class.new(app, :js_data => 24 * 60 * 60, :non_http_only => %w[js_data])
-    app.should_receive(:call).and_return([ stub, {}, stub ])
-    env['HTTP_COOKIE'] = 'js_data=json'
-    
-    code, headers, response = subject.call(env)
-    set_cookie = headers['Set-Cookie']
-    set_cookie.should =~ /js_data=json;.* secure/
-    set_cookie.should_not match(/js_data=json;.* HttpOnly/)
-  end
-  
-  it "should not make cookies secure if the request was not secure" do
-    subject = described_class.new(app)
-    app.should_receive(:call).and_return([ stub, { 'Set-Cookie' => 'filter-settings=sort_by_date'}, stub ])
+  it 'should not make cookies secure if the request was not secure' do
+    stub_app_call(app, :application_cookies => 'filter-settings=sort_by_date')
     env['HTTPS'] = 'off'
     
     code, headers, response = subject.call(env)
     headers['Set-Cookie'].should include("filter-settings=sort_by_date")
-    headers['Set-Cookie'].should_not match(/secure/i)
+    headers['Set-Cookie'].should_not match(/\bsecure\b/i)
   end
 
-  it 'does not mutate an options hash passed to it' do
-    options = { :cookie1 => 3600, :non_secure => [:cookie2], :non_http_only => [:cookie3] }
-    described_class.new(app, options)
+  it 'expires the secured_old_cookies helper cookie in ten years' do
+    Timecop.freeze(Time.parse('2013-09-17 17:53'))
 
-    options[:cookie1].should == 3600
-    options[:non_secure].should == [:cookie2]
-    options[:non_http_only].should == [:cookie3]
+    SafeCookies.configure do |config|
+      config.register_cookie('cookie_to_update', :expire_after => 3600)
+    end
+    
+    set_request_cookies(env, 'cookie_to_update=some_data')
+    stub_app_call(app)
+
+    code, headers, response = subject.call(env)
+    
+    headers['Set-Cookie'].should =~ /secured_old_cookies.*expires=Fri, 15 Sep 2023 \d\d:\d\d:\d\d/
   end
-
-  it 'sets cookies on the root path (if no "path" is supplied, browsers assume the current)' do
-    subject = described_class.new(app, :my_old_cookie => 3600)
-    env['HTTP_COOKIE'] = 'my_old_cookie=foobar'
-    app.should_receive(:call).and_return([ stub, {}, stub ])
+  
+  it 'sets cookies on the root path' do
+    SafeCookies.configure do |config|
+      config.register_cookie('my_old_cookie', :expire_after => 3600)
+    end
+    
+    set_request_cookies(env, 'my_old_cookie=foobar')
+    stub_app_call(app)
 
     code, headers, response = subject.call(env)
 
     cookies = headers['Set-Cookie'].split("\n")
-    cookies.size.should > 0
+    cookies.size.should == 3 # my_old_cookie and secured_old_cookies and _known_cookies
     cookies.each do |cookie|
       cookie.should include('; path=/;')
     end
+  end
+  
+  it 'should not alter cookie options coming from the application' do
+    stub_app_call(app, :application_cookies => 'cookie=data; path=/; expires=next_week')
+  
+    code, headers, response = subject.call(env)
+    headers['Set-Cookie'].should =~ %r(cookie=data; path=/; expires=next_week; secure; HttpOnly)
+  end
+  
+  it 'should respect cookie options set in the configuration' do
+    Timecop.freeze
+    
+    SafeCookies.configure do |config|
+      config.register_cookie('foo', :expire_after => 3600, :path => '/special/path')
+    end
+
+    stub_app_call(app)
+    set_request_cookies(env, 'foo=bar')
+    env['PATH_INFO'] = '/special/path/subfolder'
+  
+    code, headers, response = subject.call(env)
+    expected_expiry = Rack::Utils.rfc2822((Time.now + 3600).gmtime) # a special date format needed here
+    headers['Set-Cookie'].should =~ %r(foo=bar; path=/special/path; expires=#{expected_expiry}; secure; HttpOnly)
+  end
+  
+  context 'cookies set by the application' do
+    
+    it 'should make application cookies secure and http-only' do
+      stub_app_call(app, :application_cookies => 'application_cookie=value')
+
+      code, headers, response = subject.call(env)
+      headers['Set-Cookie'].should =~ /application_cookie=value;.* secure; HttpOnly/
+    end
+  
+    it 'should not make application cookies secure that are specified as non-secure' do
+      SafeCookies.configure do |config|
+        config.register_cookie('filter-settings', :expire_after => 3600, :secure => false)
+      end
+    
+      stub_app_call(app, :application_cookies => 'filter-settings=sort_by_date')
+    
+      code, headers, response = subject.call(env)
+      headers['Set-Cookie'].should include("filter-settings=sort_by_date")
+      headers['Set-Cookie'].should_not =~ /filter-settings=.*secure/i
+    end
+  
+    it 'should not make application cookies http-only that are specified as non-http-only' do
+      SafeCookies.configure do |config|
+        config.register_cookie('javascript-cookie', :expire_after => 3600, :http_only => false)
+      end
+    
+      stub_app_call(app, :application_cookies => 'javascript-cookie=xss')
+    
+      code, headers, response = subject.call(env)
+      headers['Set-Cookie'].should include("javascript-cookie=xss")
+      headers['Set-Cookie'].should_not =~ /javascript-cookie=.*HttpOnly/i
+    end
+  
+    it 'should prefer the application cookie over a client cookie' do
+      stub_app_call(app, :application_cookies => 'cookie=from_application')
+      set_request_cookies(env, 'cookie=from_client,_safe_cookies__known_cookies=cookie')
+    
+      code, headers, response = subject.call(env)
+      headers['Set-Cookie'].should include("cookie=from_application")
+      headers['Set-Cookie'].should_not include("cookie=from_client")
+    end
+
+  end
+  
+  context 'cookies sent by the client' do
+    
+    it 'should not make request cookies secure that are specified as non-secure' do
+      SafeCookies.configure do |config|
+        config.register_cookie('filter', :expire_after => 3600, :secure => false)
+      end
+    
+      stub_app_call(app)
+      set_request_cookies(env, 'filter=cars_only')
+    
+      code, headers, response = subject.call(env)
+      headers['Set-Cookie'].should =~ /filter=cars_only;.* HttpOnly/
+      headers['Set-Cookie'].should_not =~ /filter=cars_only;.* secure/
+    end
+  
+    it 'should not make request cookies http-only that are specified as non-http-only' do
+      SafeCookies.configure do |config|
+        config.register_cookie('js-data', :expire_after => 3600, :http_only => false)
+      end
+    
+      stub_app_call(app)
+      set_request_cookies(env, 'js-data=json')
+    
+      code, headers, response = subject.call(env)
+      headers['Set-Cookie'].should =~ /js-data=json;.* secure/
+      headers['Set-Cookie'].should_not =~ /js-data=json;.* HttpOnly/
+    end
+  
+  end
+
+  context 'unknown request cookies' do
+    
+    it 'should raise an error if there is an unknown cookie' do
+      set_request_cookies(env, 'foo=bar')
+    
+      expect{ subject.call(env) }.to raise_error(SafeCookies::UnknownCookieError)
+    end
+    
+    it 'should not raise an error if the (unregistered) cookie was initially set by the application' do
+      # application sets cookie
+      stub_app_call(app, :application_cookies => 'foo=bar; path=/some/path; secure')
+      
+      code, headers, response = subject.call(env)
+
+      received_cookies = extract_cookies(headers['Set-Cookie'])
+      received_cookies.should include('foo=bar') # sanity check
+      
+      # client returns with the cookie, `app` and `subject` are different
+      # objects than in the previous request
+      other_app = stub('application')
+      other_subject = described_class.new(other_app)
+      
+      stub_app_call(other_app)
+      set_request_cookies(env, *received_cookies)
+
+      other_subject.call(env)
+    end
+    
+    it 'should not raise an error if the cookie is listed in the cookie configuration' do
+      SafeCookies.configure do |config|
+        config.register_cookie('foo', :expire_after => 3600)
+      end
+    
+      stub_app_call(app)
+      set_request_cookies(env, 'foo=bar')
+      
+      subject.call(env)
+    end
+  
+    it 'allows overwriting the error mechanism' do
+      stub_app_call(app)
+      set_request_cookies(env, 'foo=bar')
+      
+      def subject.handle_unknown_cookies(*args)
+        @custom_method_called = true
+      end
+      
+      subject.call(env)
+      subject.instance_variable_get('@custom_method_called').should == true
+    end
+    
   end
 
 end
