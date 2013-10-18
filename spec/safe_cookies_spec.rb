@@ -70,7 +70,6 @@ describe SafeCookies::Middleware do
     code, headers, response = subject.call(env)
 
     cookies = headers['Set-Cookie'].split("\n")
-    cookies.size.should == 3 # my_old_cookie and secured_old_cookies and _known_cookies
     cookies.each do |cookie|
       cookie.should include('; path=/;')
     end
@@ -124,7 +123,6 @@ describe SafeCookies::Middleware do
       SafeCookies.configure do |config|
         config.register_cookie('javascript-cookie', :expire_after => 3600, :http_only => false)
       end
-    
       stub_app_call(app, :application_cookies => 'javascript-cookie=xss')
     
       code, headers, response = subject.call(env)
@@ -132,11 +130,16 @@ describe SafeCookies::Middleware do
       headers['Set-Cookie'].should_not =~ /javascript-cookie=.*HttpOnly/i
     end
   
-    it 'should prefer the application cookie over a client cookie' do
+    it 'does not rewrite a client cookie when the application is setting a cookie with the same name' do
+      SafeCookies.configure do |config|
+        config.register_cookie('cookie', :expire_after => 3600)
+      end
+
       stub_app_call(app, :application_cookies => 'cookie=from_application')
-      set_request_cookies(env, 'cookie=from_client,_safe_cookies__known_cookies=cookie')
+      set_request_cookies(env, 'cookie=from_client')
     
       code, headers, response = subject.call(env)
+
       headers['Set-Cookie'].should include("cookie=from_application")
       headers['Set-Cookie'].should_not include("cookie=from_client")
     end

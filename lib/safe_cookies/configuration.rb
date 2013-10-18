@@ -36,10 +36,11 @@ module SafeCookies
     #   :path => '/foo/path'
     #
     def register_cookie(name, options)
+      name.is_a?(String) or raise "Cookie name must be a String"
       options.has_key?(:expire_after) or raise MissingOptionError.new("Cookie #{name.inspect} was registered without an expiry")
       raise NotImplementedError if options.has_key?(:domain)
       
-      registered_cookies[name.to_s] = (options || {}).freeze
+      registered_cookies[name] = (options || {}).freeze
       insecure_cookies << name if options[:secure] == false
       scriptable_cookies << name if options[:http_only] == false
     end
