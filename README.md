@@ -13,7 +13,7 @@ Add this line to your application's Gemfile:
 
     gem 'safe_cookies'
 
-Then run `bundle`.
+Then run `bundle install`.
 
 Though this gem is aimed at Rails applications, you may even use it without Rails. Install it then with
 `gem install safe_cookies`.
@@ -36,8 +36,8 @@ Though this gem is aimed at Rails applications, you may even use it without Rail
     end
 
 ### Step 3
-Register cookies, either just after the lines you added in step 1 or in in an initializer
-(e.g. in `config/initializers/safe_cookies.rb):
+Register cookies, either just after the lines you added above or in in an initializer
+(e.g. in `config/initializers/safe_cookies.rb`):
 
     SafeCookies.configure do |config|
       config.register_cookie :remember_token, :expire_after => 1.year
@@ -46,14 +46,17 @@ Register cookies, either just after the lines you added in step 1 or in in an in
       config.register_cookie :javascript_data, :expire_after => 1.day, :http_only => false
     end
 
-This will have the `default_language` cookie not made secure, the `javascript_data` cookie
-not made http-only. It will rewrite the `remember_token` with an expiry of one year and the
-`last_action` cookie with an expiry of 30 days, making both of them secure and http-only.
+If a request has any of those four cookies, the middleware will set them anew. The `remember_token` and
+`last_action` cookies will be made `secure` and `HttpOnly`.
+Since we want to access the default language even if the user comes via HTTP,  the `default_language`
+cookie is not made secure. Analogous, the `javascript_data` cookie will be used by a script and hence is
+not made `HttpOnly`.
+
 Available options are: `:expire_after (required), :path, :secure, :http_only`.
 
-### Step 4 (only for Rails 2)
-Override `SafeCookies::Middleware#handle_unknown_cookies(cookies)` (see "Dealing with unregistered
-cookies" below).
+### Step 4 (important for Rails 2 only)
+Override `SafeCookies::Middleware#handle_unknown_cookies(cookies)` to notify you e.g. per email (see
+"Dealing with unregistered cookies" below).
 
 
 ## Dealing with unregistered cookies
