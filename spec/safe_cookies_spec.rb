@@ -7,7 +7,7 @@ describe SafeCookies::Middleware do
   let(:app) { stub 'application' }
   let(:env) { { 'HTTPS' => 'on' } }
   
-  it 'should rewrite registered request cookies as secure and http-only, but only once' do
+  it 'rewrites registered request cookies as secure and http-only, but only once' do
     SafeCookies.configure do |config|
       config.register_cookie('foo', :expire_after => 3600)
     end
@@ -35,7 +35,7 @@ describe SafeCookies::Middleware do
     headers['Set-Cookie'].to_s.should == ''
   end
 
-  it 'should not make cookies secure if the request was not secure' do
+  it 'doesn’t make cookies secure if the request was not secure' do
     stub_app_call(app, :application_cookies => 'filter-settings=sort_by_date')
     env['HTTPS'] = 'off'
     
@@ -43,7 +43,7 @@ describe SafeCookies::Middleware do
     headers['Set-Cookie'].should include("filter-settings=sort_by_date")
     headers['Set-Cookie'].should_not match(/\bsecure\b/i)
   end
-
+  
   it 'expires the secured_old_cookies helper cookie in ten years' do
     Timecop.freeze(Time.parse('2013-09-17 17:53'))
 
@@ -210,13 +210,13 @@ describe SafeCookies::Middleware do
 
   context 'unknown request cookies' do
     
-    it 'should raise an error if there is an unknown cookie' do
+    it 'raises an error if there is an unknown cookie' do
       set_request_cookies(env, 'foo=bar')
     
       expect{ subject.call(env) }.to raise_error(SafeCookies::UnknownCookieError)
     end
     
-    it 'should not raise an error if the (unregistered) cookie was initially set by the application' do
+    it 'does not raise an error if the (unregistered) cookie was initially set by the application' do
       # application sets cookie
       stub_app_call(app, :application_cookies => 'foo=bar; path=/some/path; secure')
       
@@ -236,7 +236,7 @@ describe SafeCookies::Middleware do
       other_subject.call(env)
     end
     
-    it 'should not raise an error if the cookie is listed in the cookie configuration' do
+    it 'does not raise an error if the cookie is listed in the cookie configuration' do
       SafeCookies.configure do |config|
         config.register_cookie('foo', :expire_after => 3600)
       end

@@ -9,8 +9,6 @@ require "rack"
 # Naming:
 # - application_cookies: cookies received from the application. The 'Set-Cookie' header is a string
 # - request_cookies: cookies received from the client. Rack::Request#cookies returns a Hash of { 'name' => 'value' }
-# - response_cookies: cookies to be sent to the client
-#   (= application_cookies + any cookies set in the middleware)
 
 module SafeCookies
 
@@ -39,6 +37,7 @@ module SafeCookies
       @request = Rack::Request.new(env)
       ensure_no_unknown_cookies_in_request!
 
+      # calling the next middleware
       status, @headers, body = @app.call(env)
       cache_application_cookies_string
       
@@ -56,7 +55,9 @@ module SafeCookies
     def reset_instance_variables
       @request, @headers, @application_cookies_string = nil
     end
-
+    
+    # Make sure we get notified if a client comes with an unregistered cookie,
+    # because we do not want any cookie not to be secured.
     def ensure_no_unknown_cookies_in_request!
       request_cookie_names = request_cookies.keys.map(&:to_s)
       unknown_cookie_names = request_cookie_names - known_cookie_names
@@ -88,7 +89,9 @@ module SafeCookies
         @headers['Set-Cookie'] = cookies.join("\n")
       end
     end
-
+    
+    # Store the names of cookies that are set by the application. We are already
+    # securing those and therefore do not need to rewrite them.
     def store_application_cookie_names
       if @application_cookies_string
         application_cookie_names = stored_application_cookie_names + @application_cookies_string.scan(COOKIE_NAME_REGEX)
@@ -98,7 +101,7 @@ module SafeCookies
       end
     end
     
-    # This method takes all cookies sent with the request and rewrites them,
+    # This method takes the cookies sent with the request and rewrites them,
     # making them both secure and http-only (unless specified otherwise in
     # the configuration).
     # With the SECURED_COOKIE_NAME cookie we remember the exact time that we

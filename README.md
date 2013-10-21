@@ -8,22 +8,18 @@ This Gem brings a middleware that will make all cookies secure. In detail, it wi
 
 ## Installation
 
+### Step 1
 Add this line to your application's Gemfile:
 
     gem 'safe_cookies'
 
-Then run:
+Then run `bundle`.
 
-    $ bundle
-
-Or install it yourself as:
-
-    $ gem install safe_cookies
+Though this gem is aimed at Rails applications, you may even use it without Rails. Install it then with
+`gem install safe_cookies`.
 
 
-## Usage
-
-### Step 1
+### Step 2
 **Rails 3**: add the following line in config/application.rb:
 
     class Application < Rails::Application
@@ -39,9 +35,9 @@ Or install it yourself as:
       config.middleware.insert_before ActionController::Session::CookieStore, SafeCookies::Middleware
     end
 
-### Step 2
+### Step 3
 Register cookies, either just after the lines you added in step 1 or in in an initializer
-(e.g. config/initializers/safe_cookies.rb):
+(e.g. in `config/initializers/safe_cookies.rb):
 
     SafeCookies.configure do |config|
       config.register_cookie :remember_token, :expire_after => 1.year
@@ -55,25 +51,29 @@ not made http-only. It will rewrite the `remember_token` with an expiry of one y
 `last_action` cookie with an expiry of 30 days, making both of them secure and http-only.
 Available options are: `:expire_after (required), :path, :secure, :http_only`.
 
-### Step 3
-Override `SafeCookies::Middleware#handle_unknown_cookies(cookies)` (see "Dealing with unregistered cookies" below).
+### Step 4 (only for Rails 2)
+Override `SafeCookies::Middleware#handle_unknown_cookies(cookies)` (see "Dealing with unregistered
+cookies" below).
 
 
 ## Dealing with unregistered cookies
 
-The middleware is not able to secure cookies without knowing their properties (most important: their
-expiry). Unfortunately, the [client won't ever tell us](http://tools.ietf.org/html/rfc6265#section-4.2.2)
-if the cookie was originally sent with flags such as "secure" or which expiry date it currently has.
+The middleware is not able to secure cookies without knowing their attributes (most important: their
+expiry). Unfortunately, [the client won't ever tell us](http://tools.ietf.org/html/rfc6265#section-4.2.2)
+if it stores the cookie with flags such as "secure" or which expiry date it currently has.
 Therefore, it is important to register all cookies that users may come with, specifying their properties.
 Unregistered cookies cannot be secured.
 
-If a request brings a cookie that is not registered, the middleware will raise
+If a request brings a cookie that is not registered, the middleware will raise a
 `SafeCookies::UnknownCookieError`. Rails 3+ should handle the exception as any other in your application,
 but by default, **you will not be notified from Rails 2 applications** and the user will see a standard
 500 Server Error. Override `SafeCookies::Middleware#handle_unknown_cookies(cookies)` in the config
 initializer for customized exception handling (like, notifying you per email).
 
-You should not ignore an unregistered cookie, but instead register it.
+You should register any cookie that your application has to do with. However, there are cookies that you
+do not control, like Google's `__utma` & co. You can tell the middleware to ignore those with the
+`config.ignore_cookie` directive, which takes either a String or a Regex parameter. Be careful when using
+regular expressions!
 
 
 ## Fix cookie paths

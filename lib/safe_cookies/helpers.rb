@@ -11,7 +11,7 @@ module SafeCookies
       if cookies and cookies.length > 0
         @application_cookies_string = cookies
       end
-      # else, @application_cookies_string is nil
+      # else, @application_cookies_string will be `nil`
     end
   
     def secure(cookie)
@@ -48,7 +48,7 @@ module SafeCookies
     # getters
 
     def stored_application_cookie_names
-      store_cookie = request_cookies[STORE_COOKIE_NAME] || ""
+      store_cookie = @request.cookies[STORE_COOKIE_NAME] || ""
       store_cookie.split(KNOWN_COOKIES_DIVIDER)
     end
 
@@ -72,7 +72,7 @@ module SafeCookies
     # boolean
 
     def cookies_have_been_rewritten_before?
-      request_cookies.has_key? SECURED_COOKIE_NAME
+      @request.cookies.has_key? SECURED_COOKIE_NAME
     end
 
     def should_be_secure?(cookie)

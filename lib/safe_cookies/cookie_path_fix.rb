@@ -2,22 +2,23 @@ module SafeCookies
   module CookiePathFix
   
     # Previously, the SafeCookies gem would not set a path when rewriting
-    # cookies. Browsers then would assume and store the current "directory",
-    # leading to multiple cookies per domain.
+    # cookies. Browsers then would assume and store the current "directory"
+    # (see below), leading to multiple cookies per domain.
     #
-    # If cookies had been secured before the configured datetime, the method
-    # `fix_cookie_paths` deletes all cookies coming with the request, and the
+    # If the cookies were secured before the configured datetime, this method
+    # instructs the client to delete all cookies it sent with the request + the
     # SECURED_COOKIE_NAME helper cookie.
     # The middleware still sees the request cookies and will rewrite them as
-    # if it hadn't seen them before.
-  
+    # if it hadn't seen them before, setting them on the correct path (root,
+    # per default).
     def delete_cookies_on_bad_path
       registered_cookies_in_request.keys.each do |registered_cookie|
         delete_cookie_for_current_directory(registered_cookie)
       end
       delete_cookie_for_current_directory(SafeCookies::SECURED_COOKIE_NAME)
     
-      # Delete this cookie here, so the middleware will secure all cookies anew.
+      # Delete this cookie here, so the middleware believes it hasn't secured
+      # the cookies yet.
       @request.cookies.delete(SafeCookies::SECURED_COOKIE_NAME)
     end
       
@@ -51,7 +52,8 @@ module SafeCookies
     end
   
     def current_directory_is_root?
-      !@request.path[%r(^/[^/]+/[^\?]+), 0] # roughly: "there are not three slashes"
+      # in words: "there are not three slashes before any query params"
+      !@request.path[%r(^/[^/]+/[^\?]+), 0]
     end
   
     def secured_old_cookies_timestamp
