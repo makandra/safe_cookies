@@ -13,12 +13,13 @@ module SafeCookies
   end
 
   class Configuration
-    attr_reader :registered_cookies, :fix_cookie_paths, :correct_cookie_paths_timestamp
+    attr_reader :registered_cookies, :fix_cookie_paths, :correct_cookie_paths_timestamp, :ignored_cookies
 
     def initialize
       self.registered_cookies = {}
       self.insecure_cookies = []
       self.scriptable_cookies = []
+      self.ignored_cookies = []
     end
     
     # Register cookies you expect to receive. The middleware will rewrite all
@@ -45,6 +46,14 @@ module SafeCookies
       scriptable_cookies << name if options[:http_only] == false
     end
     
+    # Ignore cookies that you don't control like this:
+    #
+    #   ignore_cookie 'ignored_cookie'
+    #   ignore_cookie /^__utm/
+    def ignore_cookie(name_or_regex)
+      self.ignored_cookies << name_or_regex
+    end
+    
     def fix_paths(options = {})
       options.has_key?(:for_cookies_secured_before) or raise MissingOptionError.new("Was told to fix paths without the :for_cookies_secured_before timestamp.")
 
@@ -63,7 +72,7 @@ module SafeCookies
     private
     
     attr_accessor :insecure_cookies, :scriptable_cookies
-    attr_writer :registered_cookies, :fix_cookie_paths, :correct_cookie_paths_timestamp
+    attr_writer :registered_cookies, :fix_cookie_paths, :correct_cookie_paths_timestamp, :ignored_cookies
 
   end
 

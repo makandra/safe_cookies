@@ -11,14 +11,14 @@ module SafeCookies
     # The middleware still sees the request cookies and will rewrite them as
     # if it hadn't seen them before.
   
-    def fix_cookie_paths
+    def delete_cookies_on_bad_path
       registered_cookies_in_request.keys.each do |registered_cookie|
         delete_cookie_for_current_directory(registered_cookie)
       end
       delete_cookie_for_current_directory(SafeCookies::SECURED_COOKIE_NAME)
     
       # Delete this cookie here, so the middleware will secure all cookies anew.
-      request_cookies.delete(SafeCookies::SECURED_COOKIE_NAME)
+      @request.cookies.delete(SafeCookies::SECURED_COOKIE_NAME)
     end
       
     private

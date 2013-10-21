@@ -9,8 +9,9 @@ module SafeCookies
       cookies = cookies.join("\n") if cookies.is_a?(Array)
     
       if cookies and cookies.length > 0
-        @application_cookies = cookies
+        @application_cookies_string = cookies
       end
+      # else, @application_cookies_string is nil
     end
   
     def secure(cookie)
@@ -61,9 +62,10 @@ module SafeCookies
       known += stored_application_cookie_names
       known += @configuration.registered_cookies.keys
     end
-
+    
+    # returns the request cookies minus ignored cookies
     def request_cookies
-      @request.cookies
+      Util.except!(@request.cookies.dup, *@configuration.ignored_cookies)
     end
 
 

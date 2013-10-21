@@ -59,43 +59,47 @@ describe SafeCookies::Middleware do
     headers['Set-Cookie'].should =~ /secured_old_cookies.*expires=Fri, 15 Sep 2023 \d\d:\d\d:\d\d/
   end
   
-  it 'sets cookies on the root path' do
-    SafeCookies.configure do |config|
-      config.register_cookie('my_old_cookie', :expire_after => 3600)
+  context 'cookie attributes' do
+
+    it 'sets cookies on the root path' do
+      SafeCookies.configure do |config|
+        config.register_cookie('my_old_cookie', :expire_after => 3600)
+      end
+    
+      set_request_cookies(env, 'my_old_cookie=foobar')
+      stub_app_call(app)
+
+      code, headers, response = subject.call(env)
+
+      cookies = headers['Set-Cookie'].split("\n")
+      cookies.each do |cookie|
+        cookie.should include('; path=/;')
+      end
+    end
+  
+    it 'should not alter cookie attributes coming from the application' do
+      stub_app_call(app, :application_cookies => 'cookie=data; path=/; expires=next_week')
+  
+      code, headers, response = subject.call(env)
+      headers['Set-Cookie'].should =~ %r(cookie=data; path=/; expires=next_week; secure; HttpOnly)
+    end
+  
+    it 'should respect cookie attributes set in the configuration' do
+      Timecop.freeze
+    
+      SafeCookies.configure do |config|
+        config.register_cookie('foo', :expire_after => 3600, :path => '/special/path')
+      end
+
+      stub_app_call(app)
+      set_request_cookies(env, 'foo=bar')
+      env['PATH_INFO'] = '/special/path/subfolder'
+  
+      code, headers, response = subject.call(env)
+      expected_expiry = Rack::Utils.rfc2822((Time.now + 3600).gmtime) # a special date format needed here
+      headers['Set-Cookie'].should =~ %r(foo=bar; path=/special/path; expires=#{expected_expiry}; secure; HttpOnly)
     end
     
-    set_request_cookies(env, 'my_old_cookie=foobar')
-    stub_app_call(app)
-
-    code, headers, response = subject.call(env)
-
-    cookies = headers['Set-Cookie'].split("\n")
-    cookies.each do |cookie|
-      cookie.should include('; path=/;')
-    end
-  end
-  
-  it 'should not alter cookie options coming from the application' do
-    stub_app_call(app, :application_cookies => 'cookie=data; path=/; expires=next_week')
-  
-    code, headers, response = subject.call(env)
-    headers['Set-Cookie'].should =~ %r(cookie=data; path=/; expires=next_week; secure; HttpOnly)
-  end
-  
-  it 'should respect cookie options set in the configuration' do
-    Timecop.freeze
-    
-    SafeCookies.configure do |config|
-      config.register_cookie('foo', :expire_after => 3600, :path => '/special/path')
-    end
-
-    stub_app_call(app)
-    set_request_cookies(env, 'foo=bar')
-    env['PATH_INFO'] = '/special/path/subfolder'
-  
-    code, headers, response = subject.call(env)
-    expected_expiry = Rack::Utils.rfc2822((Time.now + 3600).gmtime) # a special date format needed here
-    headers['Set-Cookie'].should =~ %r(foo=bar; path=/special/path; expires=#{expected_expiry}; secure; HttpOnly)
   end
   
   context 'cookies set by the application' do
@@ -173,7 +177,35 @@ describe SafeCookies::Middleware do
       headers['Set-Cookie'].should =~ /js-data=json;.* secure/
       headers['Set-Cookie'].should_not =~ /js-data=json;.* HttpOnly/
     end
-  
+    
+  end
+
+  context 'ignored cookies' do
+    
+    before do
+      stub_app_call(app)
+      set_request_cookies(env, '__utma=123', '__utmz=456')
+    end
+
+    it 'does not rewrite ignored cookies given as string' do
+      SafeCookies.configure do |config|
+        config.ignore_cookie '__utma'
+        config.ignore_cookie '__utmz'
+      end
+
+      code, headers, response = subject.call(env)
+      headers['Set-Cookie'].should_not =~ /__utm/
+    end
+
+    it 'does not rewrite ignored cookies given as regex' do
+      SafeCookies.configure do |config|
+        config.ignore_cookie /^__utm/
+      end
+      
+      code, headers, response = subject.call(env)
+      headers['Set-Cookie'].should_not =~ /__utm/
+    end
+    
   end
 
   context 'unknown request cookies' do
@@ -214,7 +246,18 @@ describe SafeCookies::Middleware do
       
       subject.call(env)
     end
-  
+    
+    it 'does not raise an error if the cookie is ignored' do
+      SafeCookies.configure do |config|
+        config.ignore_cookie '__utma'
+      end
+
+      stub_app_call(app)
+      set_request_cookies(env, '__utma=tracking')
+      
+      subject.call(env)
+    end
+    
     it 'allows overwriting the error mechanism' do
       stub_app_call(app)
       set_request_cookies(env, 'foo=bar')

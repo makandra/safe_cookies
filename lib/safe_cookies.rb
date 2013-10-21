@@ -42,10 +42,10 @@ module SafeCookies
       status, @headers, body = @app.call(env)
       cache_application_cookies_string
       
-      remove_application_cookies_from_request_cookies
-      rewrite_application_cookies
+      enhance_application_cookies!
       store_application_cookie_names
-      fix_cookie_paths if fix_cookie_paths?
+      
+      delete_cookies_on_bad_path if fix_cookie_paths?
       rewrite_request_cookies unless cookies_have_been_rewritten_before?
 
       [ status, @headers, body ]
@@ -54,7 +54,7 @@ module SafeCookies
     private
     
     def reset_instance_variables
-      @request, @headers, @application_cookies = nil
+      @request, @headers, @application_cookies_string = nil
     end
 
     def ensure_no_unknown_cookies_in_request!
@@ -65,19 +65,11 @@ module SafeCookies
         handle_unknown_cookies(unknown_cookie_names)
       end
     end
-
-    def remove_application_cookies_from_request_cookies
-      if @application_cookies
-        application_cookie_names = @application_cookies.scan(COOKIE_NAME_REGEX)
-        application_cookie_names.each do |cookie|
-          request_cookies.delete(cookie)
-        end
-      end
-    end
-
-    def rewrite_application_cookies
-      if @application_cookies
-        cookies = @application_cookies.split("\n")
+    
+    # Overwrites @header['Set-Cookie']
+    def enhance_application_cookies!
+      if @application_cookies_string
+        cookies = @application_cookies_string.split("\n")
       
         # On Rack 1.1, cookie values sometimes contain trailing newlines.
         # Example => ["foo=1; path=/\n", "bar=2; path=/"]
@@ -98,8 +90,8 @@ module SafeCookies
     end
 
     def store_application_cookie_names
-      if @application_cookies
-        application_cookie_names = stored_application_cookie_names + @application_cookies.scan(COOKIE_NAME_REGEX)
+      if @application_cookies_string
+        application_cookie_names = stored_application_cookie_names + @application_cookies_string.scan(COOKIE_NAME_REGEX)
         application_cookies_string = application_cookie_names.uniq.join(KNOWN_COOKIES_DIVIDER)
 
         set_cookie!(STORE_COOKIE_NAME, application_cookies_string, :expire_after => HELPER_COOKIES_LIFETIME)
@@ -112,7 +104,15 @@ module SafeCookies
     # With the SECURED_COOKIE_NAME cookie we remember the exact time that we
     # rewrote the cookies.
     def rewrite_request_cookies
-      if request_cookies.any?
+      cookies_to_rewrite = request_cookies || []
+      
+      # don't rewrite request cookies that the application is setting in the response
+      if @application_cookies_string
+        application_cookie_names = @application_cookies_string.scan(COOKIE_NAME_REGEX)
+        Util.except!(cookies_to_rewrite, *application_cookie_names)
+      end
+      
+      if cookies_to_rewrite.any?
         registered_cookies_in_request.each do |cookie_name, options|
           value = request_cookies[cookie_name]
 
@@ -124,6 +124,7 @@ module SafeCookies
       end
     end
     
+    # API method
     def handle_unknown_cookies(cookie_names)
       raise SafeCookies::UnknownCookieError.new("Request for '#{@request.url}' had unknown cookies: #{cookie_names.join(', ')}")
     end
