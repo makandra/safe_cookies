@@ -50,6 +50,11 @@ module SafeCookies
   
   
     # getters
+    
+    # returns the request cookies minus ignored cookies
+    def request_cookies
+      Util.except!(@request.cookies.dup, *@config.ignored_cookies)
+    end
 
     def stored_application_cookie_names
       store_cookie = @request.cookies[STORE_COOKIE_NAME] || ""
@@ -64,11 +69,6 @@ module SafeCookies
       known = [STORE_COOKIE_NAME, SECURED_COOKIE_NAME]
       known += stored_application_cookie_names
       known += @config.registered_cookies.keys
-    end
-    
-    # returns the request cookies minus ignored cookies
-    def request_cookies
-      Util.except!(@request.cookies.dup, *@config.ignored_cookies)
     end
 
 

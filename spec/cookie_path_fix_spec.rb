@@ -3,7 +3,7 @@ require 'cgi'
 
 describe SafeCookies::Middleware do
   
-  describe 'cookie path fix' do
+  describe 'cookie path fix,' do
     
     subject { described_class.new(app) }
     let(:app) { stub 'application' }
@@ -19,7 +19,7 @@ describe SafeCookies::Middleware do
     end
 
 
-    context 'rewriting previously secured cookies' do
+    context 'rewriting previously secured cookies,' do
       
       before do
         SafeCookies.configure do |config|
