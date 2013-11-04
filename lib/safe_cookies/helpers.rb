@@ -3,6 +3,9 @@ module SafeCookies
   
     KNOWN_COOKIES_DIVIDER = '|'
   
+    # Since we have to operate on and modify the actual @headers hash that the
+    # application returns, cache the @headers['Set-Cookie'] string so that
+    # later on, we still know what the application did set.
     def cache_application_cookies_string
       cookies = @headers['Set-Cookie']
       # Rack 1.1 returns an Array
@@ -41,6 +44,7 @@ module SafeCookies
       options[:secure] = should_be_secure?(name)
       options[:httponly] = should_be_http_only?(name)
 
+      # Rack magic
       Rack::Utils.set_cookie_header!(@headers, name, options)
     end
   
@@ -53,18 +57,18 @@ module SafeCookies
     end
 
     def rewritable_cookie_names
-      @configuration.registered_cookies.keys
+      @config.registered_cookies.keys
     end
 
     def known_cookie_names
       known = [STORE_COOKIE_NAME, SECURED_COOKIE_NAME]
       known += stored_application_cookie_names
-      known += @configuration.registered_cookies.keys
+      known += @config.registered_cookies.keys
     end
     
     # returns the request cookies minus ignored cookies
     def request_cookies
-      Util.except!(@request.cookies.dup, *@configuration.ignored_cookies)
+      Util.except!(@request.cookies.dup, *@config.ignored_cookies)
     end
 
 
@@ -76,7 +80,7 @@ module SafeCookies
 
     def should_be_secure?(cookie)
       cookie_name = cookie.split('=').first.strip
-      ssl? and not @configuration.insecure_cookie?(cookie_name)
+      ssl? and not @config.insecure_cookie?(cookie_name)
     end
 
     def ssl?
@@ -90,7 +94,7 @@ module SafeCookies
 
     def should_be_http_only?(cookie)
       cookie_name = cookie.split('=').first.strip
-      not @configuration.scriptable_cookie?(cookie_name)
+      not @config.scriptable_cookie?(cookie_name)
     end  
 
   end

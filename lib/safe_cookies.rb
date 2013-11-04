@@ -28,16 +28,16 @@ module SafeCookies
 
     def initialize(app)
       @app = app
-      @configuration = SafeCookies.configuration or raise "Don't know what to do without configuration"
+      @config = SafeCookies.configuration or raise "Don't know what to do without configuration"
     end
 
     def call(env)
       reset_instance_variables
       
       @request = Rack::Request.new(env)
-      ensure_no_unknown_cookies_in_request!
+      check_if_request_has_unknown_cookies
 
-      # calling the next middleware
+      # call the next middleware up the stack
       status, @headers, body = @app.call(env)
       cache_application_cookies_string
       
@@ -52,13 +52,14 @@ module SafeCookies
 
     private
     
+    # Instance variables survive requests because the middleware is a singleton.
     def reset_instance_variables
       @request, @headers, @application_cookies_string = nil
     end
     
-    # Make sure we get notified if a client comes with an unregistered cookie,
-    # because we do not want any cookie not to be secured.
-    def ensure_no_unknown_cookies_in_request!
+    # Do something if a request has an unregistered cookie, because we do not
+    # want any cookie to not be secured. By default, we raise an error.
+    def check_if_request_has_unknown_cookies
       request_cookie_names = request_cookies.keys.map(&:to_s)
       unknown_cookie_names = request_cookie_names - known_cookie_names
       
@@ -67,7 +68,7 @@ module SafeCookies
       end
     end
     
-    # Overwrites @header['Set-Cookie']
+    # Overwrites @header['Set-Cookie']!
     def enhance_application_cookies!
       if @application_cookies_string
         cookies = @application_cookies_string.split("\n")
@@ -90,8 +91,8 @@ module SafeCookies
       end
     end
     
-    # Store the names of cookies that are set by the application. We are already
-    # securing those and therefore do not need to rewrite them.
+    # Store the names of cookies that are set by the application.
+    # (We are already securing those and will not need to rewrite them.)
     def store_application_cookie_names
       if @application_cookies_string
         application_cookie_names = stored_application_cookie_names + @application_cookies_string.scan(COOKIE_NAME_REGEX)

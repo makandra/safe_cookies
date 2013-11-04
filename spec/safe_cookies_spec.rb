@@ -208,7 +208,7 @@ describe SafeCookies::Middleware do
     
   end
 
-  context 'unknown request cookies' do
+  context 'when a request has unknown cookies,' do
     
     it 'raises an error if there is an unknown cookie' do
       set_request_cookies(env, 'foo=bar')
