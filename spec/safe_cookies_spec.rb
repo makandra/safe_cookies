@@ -96,7 +96,7 @@ describe SafeCookies::Middleware do
       env['PATH_INFO'] = '/special/path/subfolder'
   
       code, headers, response = subject.call(env)
-      expected_expiry = Rack::Utils.rfc2822((Time.now + 3600).gmtime) # a special date format needed here
+      expected_expiry = (Time.now + 3600).gmtime.rfc2822 # a special date format needed here
       headers['Set-Cookie'].should =~ %r(foo=bar; path=/special/path; expires=#{expected_expiry}; secure; HttpOnly)
     end
     

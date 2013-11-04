@@ -15,8 +15,7 @@ describe SafeCookies::Middleware do
     end
     
     def set_default_request_cookies(secured_at = Time.parse('2040-01-01 00:00'))
-      secured_old_cookies_time = Rack::Utils.rfc2822(secured_at.gmtime)
-      set_request_cookies(env, 'cookie_to_update=some_data', "secured_old_cookies=#{CGI::escape(secured_old_cookies_time)}")
+      set_request_cookies(env, 'cookie_to_update=some_data', "secured_old_cookies=#{CGI::escape(secured_at.gmtime.rfc2822)}")
     end
 
 
@@ -109,11 +108,21 @@ describe SafeCookies::Middleware do
         headers['Set-Cookie'].should =~ %r(secured_old_cookies=\w+.*path=/;)
       end
       
-      it 'rewrites cookies even if it cannot parse the secured_old_cookies timestamp' do
-        set_request_cookies(env, 'cookie_to_update=some_data', 'secured_old_cookies=rubbish')
-  
-        code, headers, response = subject.call(env)
-        headers['Set-Cookie'].should =~ /cookie_to_update=some_data;.*path=\/;/
+      context 'unparseable secured_old_cookies timestamp,' do
+        
+        before do
+          set_request_cookies(env, 'cookie_to_update=some_data', 'secured_old_cookies=rubbish')
+          code, @headers, response = subject.call(env)
+        end
+        
+        it 'rewrites cookies anyway' do
+          @headers['Set-Cookie'].should include('cookie_to_update=some_data;')
+        end
+        
+        it 'sets a new, parseable secured_old_cookies timestamp' do
+          @headers['Set-Cookie'].should include("secured_old_cookies=#{CGI::escape @now.gmtime.rfc2822}")
+        end
+
       end
 
     end

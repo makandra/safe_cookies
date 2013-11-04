@@ -25,10 +25,9 @@ module SafeCookies
     private
   
     def fix_cookie_paths?
-      @config.fix_cookie_paths or return false
-    
-      cookies_need_path_fix = (secured_old_cookies_timestamp < @config.correct_cookie_paths_timestamp)
-      cookies_have_been_rewritten_before? and cookies_need_path_fix
+      @config.fix_cookie_paths &&
+      cookies_have_been_rewritten_before? &&
+      (secured_old_cookies_timestamp < @config.correct_cookie_paths_timestamp)
     end
 
     # Delete cookies by giving them an expiry in the past,
@@ -56,11 +55,17 @@ module SafeCookies
     end
   
     def secured_old_cookies_timestamp
-      Time.rfc2822(request_cookies[SafeCookies::SECURED_COOKIE_NAME])
+      @request.cookies.has_key?(SafeCookies::SECURED_COOKIE_NAME) or return nil
+
+      Time.rfc2822(@request.cookies[SafeCookies::SECURED_COOKIE_NAME])
     rescue ArgumentError
       # If we cannot parse the secured_old_cookies time,
       # assume it was before we noticed the bug to ensure
       # broken cookie paths will be fixed.
+      #
+      # One reason to get here is that Rack::Utils.rfc2822 produces an invalid
+      # datetime string in Rack v1.1, writing the date with dashes
+      # (e.g. '04-Nov-2013').
       Time.parse "2013-08-25 00:00"
     end
 

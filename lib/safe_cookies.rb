@@ -5,6 +5,7 @@ require "safe_cookies/helpers"
 require "safe_cookies/util"
 require "safe_cookies/version"
 require "rack"
+require "time" # add Time#rfc2822
 
 # Naming:
 # - application_cookies: cookies received from the application. The 'Set-Cookie' header is a string
@@ -122,8 +123,7 @@ module SafeCookies
           set_cookie!(cookie_name, value, options)
         end
       
-        formatted_now = Rack::Utils.rfc2822(Time.now.gmtime)
-        set_cookie!(SECURED_COOKIE_NAME, formatted_now, :expire_after => HELPER_COOKIES_LIFETIME)
+        set_cookie!(SECURED_COOKIE_NAME, Time.now.gmtime.rfc2822, :expire_after => HELPER_COOKIES_LIFETIME)
       end
     end
     
