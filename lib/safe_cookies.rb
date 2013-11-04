@@ -109,7 +109,7 @@ module SafeCookies
     # With the SECURED_COOKIE_NAME cookie we remember the exact time that we
     # rewrote the cookies.
     def rewrite_request_cookies
-      rewritable_cookies = Util.slice(request_cookies, *rewritable_cookie_names)
+      rewritable_cookies = rewritable_request_cookies
       
       # don't rewrite request cookies that the application is setting in the response
       if @application_cookies_string

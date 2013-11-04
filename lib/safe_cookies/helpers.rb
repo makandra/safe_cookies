@@ -56,8 +56,8 @@ module SafeCookies
       store_cookie.split(KNOWN_COOKIES_DIVIDER)
     end
 
-    def rewritable_cookie_names
-      @config.registered_cookies.keys
+    def rewritable_request_cookies
+      Util.slice(request_cookies, *@config.registered_cookies.keys)
     end
 
     def known_cookie_names

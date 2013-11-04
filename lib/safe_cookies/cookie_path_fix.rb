@@ -13,7 +13,6 @@ module SafeCookies
     # if it hadn't seen them before, setting them on the correct path (root,
     # by default).
     def delete_cookies_on_bad_path
-      rewritable_request_cookies = Util.slice(request_cookies, *rewritable_cookie_names)
       rewritable_request_cookies.keys.each &method(:delete_cookie_for_current_directory)
       delete_cookie_for_current_directory(SafeCookies::SECURED_COOKIE_NAME)
     
