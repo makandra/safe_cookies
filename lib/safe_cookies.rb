@@ -107,18 +107,17 @@ module SafeCookies
     # With the SECURED_COOKIE_NAME cookie we remember the exact time that we
     # rewrote the cookies.
     def rewrite_request_cookies
-      cookies_to_rewrite = request_cookies || []
+      rewritable_cookies = Util.slice(request_cookies, *rewritable_cookie_names)
       
       # don't rewrite request cookies that the application is setting in the response
       if @application_cookies_string
-        application_cookie_names = @application_cookies_string.scan(COOKIE_NAME_REGEX)
-        Util.except!(cookies_to_rewrite, *application_cookie_names)
+        app_cookie_names = @application_cookies_string.scan(COOKIE_NAME_REGEX)
+        Util.except!(rewritable_cookies, *app_cookie_names)
       end
       
-      if cookies_to_rewrite.any?
-        registered_cookies_in_request.each do |cookie_name, options|
-          value = request_cookies[cookie_name]
-
+      if rewritable_cookies.any?
+        rewritable_cookies.each do |cookie_name, value|
+          options = @config.registered_cookies[cookie_name]
           set_cookie!(cookie_name, value, options)
         end
       

@@ -52,9 +52,8 @@ module SafeCookies
       store_cookie.split(KNOWN_COOKIES_DIVIDER)
     end
 
-    # returns those of the registered cookies that appear in the request
-    def registered_cookies_in_request
-      Util.slice(@configuration.registered_cookies, *request_cookies.keys)
+    def rewritable_cookie_names
+      @configuration.registered_cookies.keys
     end
 
     def known_cookie_names

@@ -12,9 +12,8 @@ module SafeCookies
     # if it hadn't seen them before, setting them on the correct path (root,
     # per default).
     def delete_cookies_on_bad_path
-      registered_cookies_in_request.keys.each do |registered_cookie|
-        delete_cookie_for_current_directory(registered_cookie)
-      end
+      rewritable_request_cookies = Util.slice(request_cookies, *rewritable_cookie_names)
+      rewritable_request_cookies.keys.each &method(:delete_cookie_for_current_directory)
       delete_cookie_for_current_directory(SafeCookies::SECURED_COOKIE_NAME)
     
       # Delete this cookie here, so the middleware believes it hasn't secured
