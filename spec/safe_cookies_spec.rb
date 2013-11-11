@@ -207,16 +207,22 @@ describe SafeCookies::Middleware do
     end
     
   end
-
+  
+  
+  # The unknown cookies mechanism was more important when we were sending
+  # notifications on encountering unknown cookies. Perhaps, it will regain
+  # importance in the future.
   context 'when a request has unknown cookies,' do
     
-    it 'raises an error if there is an unknown cookie' do
+    it 'logs an error message' do
+      stub_app_call(app)
       set_request_cookies(env, 'foo=bar')
-    
-      expect{ subject.call(env) }.to raise_error(SafeCookies::UnknownCookieError)
+      
+      subject.should_receive(:log_error).with(/unknown cookies: foo/)
+      subject.call(env)
     end
     
-    it 'does not raise an error if the (unregistered) cookie was initially set by the application' do
+    it 'does not log an error if the (unregistered) cookie was initially set by the application' do
       # application sets cookie
       stub_app_call(app, :application_cookies => 'foo=bar; path=/some/path; secure')
       
@@ -233,10 +239,11 @@ describe SafeCookies::Middleware do
       stub_app_call(other_app)
       set_request_cookies(env, *received_cookies)
 
+      other_subject.should_not_receive(:log_error)
       other_subject.call(env)
     end
     
-    it 'does not raise an error if the cookie is listed in the cookie configuration' do
+    it 'does not log an error if the cookie is listed in the cookie configuration' do
       SafeCookies.configure do |config|
         config.register_cookie('foo', :expire_after => 3600)
       end
@@ -244,10 +251,11 @@ describe SafeCookies::Middleware do
       stub_app_call(app)
       set_request_cookies(env, 'foo=bar')
       
+      subject.should_not_receive(:log_error)
       subject.call(env)
     end
     
-    it 'does not raise an error if the cookie is ignored' do
+    it 'does not log an error if the cookie is ignored' do
       SafeCookies.configure do |config|
         config.ignore_cookie '__utma'
       end
@@ -255,10 +263,11 @@ describe SafeCookies::Middleware do
       stub_app_call(app)
       set_request_cookies(env, '__utma=tracking')
       
+      subject.should_not_receive(:log_error)
       subject.call(env)
     end
     
-    it 'allows overwriting the error mechanism' do
+    it 'allows overwriting the handling mechanism' do
       stub_app_call(app)
       set_request_cookies(env, 'foo=bar')
       

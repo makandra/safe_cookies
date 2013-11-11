@@ -66,19 +66,22 @@ The middleware is not able to secure cookies without knowing their attributes
 if it stores the cookie with flags such as "secure" or which expiry date it
 currently has. Therefore, it is important to register all cookies that may be
 sent by the client, specifying their properties. Unregistered cookies cannot be
-secured.
+secured by the middleware.
 
-If a request contains a cookie that is not registered, the middleware will raise
-a `SafeCookies::UnknownCookieError`. Rails 3+ should handle the exception as any
-other in your application, but by default, **you will not be notified from Rails
-2 applications** and the user will see a standard 500 Server Error. Override
-`SafeCookies::Middleware#handle_unknown_cookies(cookies)` in the config
-initializer for customized exception handling (like, notifying you per email).
+Unknown cookies are written to the Rails log. When you start implementing the
+middleware, you should closely watch it to find cookies you forgot to register.
+You may overwrite `SafeCookies::Middleware#handle_unknown_cookies(cookies)` in
+the config initializer for customized behaviour (like, notifying you per email).
 
-You should register any cookie that your application has to do with. However, there are cookies that you
-do not control, like Google's `__utma` & co. You can tell the middleware to ignore those with the
-`config.ignore_cookie` directive, which takes either a String or a Regex parameter. Be careful when using
-regular expressions!
+You should register any cookie that your application is using.
+
+
+## Ignoring cookies
+
+Currently, ignoring cookies only prevents the middleware from writing them to the logs.
+
+You can tell the middleware to ignore cookies with the `config.ignore_cookie`
+directive, which takes either a String or a Regex parameter. Be careful when using regular expressions!
 
 
 ## Fix cookie paths

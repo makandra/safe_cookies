@@ -18,6 +18,7 @@ module SafeCookies
   STORE_COOKIE_NAME = '_safe_cookies__known_cookies'
   SECURED_COOKIE_NAME = 'secured_old_cookies'
   HELPER_COOKIES_LIFETIME = 10 * 365 * 24 * 60 * 60 # 10 years
+  
 
   class Middleware
     
@@ -57,9 +58,7 @@ module SafeCookies
     def reset_instance_variables
       @request, @headers, @application_cookies_string = nil
     end
-    
-    # Do something if a request has an unregistered cookie, because we do not
-    # want any cookie to not be secured. By default, we raise an error.
+
     def check_if_request_has_unknown_cookies
       request_cookie_names = request_cookies.keys.map(&:to_s)
       unknown_cookie_names = request_cookie_names - known_cookie_names
@@ -129,7 +128,14 @@ module SafeCookies
     
     # API method
     def handle_unknown_cookies(cookie_names)
-      raise SafeCookies::UnknownCookieError.new("Request for '#{@request.url}' had unknown cookies: #{cookie_names.join(', ')}")
+      log_error("Request for '#{@request.url}' had unknown cookies: #{cookie_names.join(', ')}")
+    end
+    
+    def log_error(error_message)
+      message = '** [SafeCookies error] '
+      message << error_message
+      
+      Rails.logger.error(message) if defined?(Rails)
     end
 
   end
