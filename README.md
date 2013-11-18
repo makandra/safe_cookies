@@ -9,35 +9,22 @@ This Gem has a middleware that will make all cookies secure. In detail, it will:
 ## Installation
 
 ### Step 1
-Add this line to your application's Gemfile:
-
-    gem 'safe_cookies'
-
-Then run `bundle install`.
-
-Though this gem is aimed at Rails applications, you may even use it without
-Rails. In that case, install it with `gem install safe_cookies`.
-
+Add `gem 'safe_cookies'` to your application's Gemfile, then run `bundle install`.
 
 ### Step 2
-**Rails 3 and 4**: add the following line in config/application.rb:
+**Rails 3 and 4**: add the following lines to the application block in config/application.rb:
 
-    class Application < Rails::Application
-      # ...
-      config.middleware.insert_before ActionDispatch::Cookies, SafeCookies::Middleware
-    end
+    require 'safe_cookies'
+    config.middleware.insert_before ActionDispatch::Cookies, SafeCookies::Middleware
 
-**Rails 2:** add the following lines in config/environment.rb:
+**Rails 2:** add the following lines to the initializer block in config/environment.rb:
 
-    Rails::Initializer.run do |config|
-      # ...
-      require 'safe_cookies'
-      config.middleware.insert_before ActionController::Session::CookieStore, SafeCookies::Middleware
-    end
+    require 'safe_cookies'
+    config.middleware.insert_before ActionController::Session::CookieStore, SafeCookies::Middleware
 
 ### Step 3
-Register cookies, either just after the lines you added above or in in an initializer
-(e.g. in `config/initializers/safe_cookies.rb`):
+Register cookies, either just after the lines you added above or in in an
+initializer (e.g. in `config/initializers/safe_cookies.rb`):
 
     SafeCookies.configure do |config|
       config.register_cookie :remember_token, :expire_after => 1.year
@@ -46,17 +33,13 @@ Register cookies, either just after the lines you added above or in in an initia
       config.register_cookie :javascript_data, :expire_after => 1.day, :http_only => false
     end
 
-If a request has any of those four cookies, the middleware will set them anew. The `remember_token` and
-`last_action` cookies will be made `secure` and `HttpOnly`.
-Since we want to access the default language even if the user comes via HTTP,  the `default_language`
-cookie is not made secure. Analogous, the `javascript_data` cookie will be used by a script and hence is
-not made `HttpOnly`.
+If a request has any of those four cookies, the middleware will set them anew.
+The `remember_token` and `last_action` cookies will be made `secure` and `HttpOnly`.
+Since we want to access the default language even if the user comes via HTTP,
+the `default_language` cookie is not made secure. Analogous, the `javascript_data`
+cookie will be used by a script and hence is not made `HttpOnly`.
 
-Available options are: `:expire_after (required), :path, :secure, :http_only`.
-
-### Step 4 (important for Rails 2 only)
-Override `SafeCookies::Middleware#handle_unknown_cookies(cookies)` to notify you
-e.g. by email (see "Dealing with unregistered cookies" below).
+Available options are: `:expire_after` (required)`, :path, :secure, :http_only`.
 
 
 ## Dealing with unregistered cookies
@@ -78,7 +61,7 @@ You should register any cookie that your application is using.
 
 ## Ignoring cookies
 
-Currently, ignoring cookies only prevents the middleware from writing them to the logs.
+Currently, ignoring cookies only keeps the middleware from writing unknown cookies to the logs.
 
 You can tell the middleware to ignore cookies with the `config.ignore_cookie`
 directive, which takes either a String or a Regex parameter. Be careful when using regular expressions!
