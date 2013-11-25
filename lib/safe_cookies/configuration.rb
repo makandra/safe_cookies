@@ -13,7 +13,9 @@ module SafeCookies
   end
 
   class Configuration
-    attr_reader :registered_cookies, :fix_cookie_paths, :correct_cookie_paths_timestamp, :ignored_cookies
+    attr_accessor :log_unknown_cookies
+    attr_reader :registered_cookies, :fix_cookie_paths, :correct_cookie_paths_timestamp,
+      :ignored_cookies
 
     def initialize
       self.registered_cookies = {}
@@ -72,7 +74,8 @@ module SafeCookies
     private
     
     attr_accessor :insecure_cookies, :scriptable_cookies
-    attr_writer :registered_cookies, :fix_cookie_paths, :correct_cookie_paths_timestamp, :ignored_cookies
+    attr_writer :registered_cookies, :fix_cookie_paths, :correct_cookie_paths_timestamp,
+      :ignored_cookies
 
   end
 

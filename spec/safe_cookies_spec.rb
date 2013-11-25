@@ -214,59 +214,6 @@ describe SafeCookies::Middleware do
   # importance in the future.
   context 'when a request has unknown cookies,' do
     
-    it 'logs an error message' do
-      stub_app_call(app)
-      set_request_cookies(env, 'foo=bar')
-      
-      subject.should_receive(:log_error).with(/unknown cookies: foo/)
-      subject.call(env)
-    end
-    
-    it 'does not log an error if the (unregistered) cookie was initially set by the application' do
-      # application sets cookie
-      stub_app_call(app, :application_cookies => 'foo=bar; path=/some/path; secure')
-      
-      code, headers, response = subject.call(env)
-
-      received_cookies = extract_cookies(headers['Set-Cookie'])
-      received_cookies.should include('foo=bar') # sanity check
-      
-      # client returns with the cookie, `app` and `subject` are different
-      # objects than in the previous request
-      other_app = stub('application')
-      other_subject = described_class.new(other_app)
-      
-      stub_app_call(other_app)
-      set_request_cookies(env, *received_cookies)
-
-      other_subject.should_not_receive(:log_error)
-      other_subject.call(env)
-    end
-    
-    it 'does not log an error if the cookie is listed in the cookie configuration' do
-      SafeCookies.configure do |config|
-        config.register_cookie('foo', :expire_after => 3600)
-      end
-    
-      stub_app_call(app)
-      set_request_cookies(env, 'foo=bar')
-      
-      subject.should_not_receive(:log_error)
-      subject.call(env)
-    end
-    
-    it 'does not log an error if the cookie is ignored' do
-      SafeCookies.configure do |config|
-        config.ignore_cookie '__utma'
-      end
-
-      stub_app_call(app)
-      set_request_cookies(env, '__utma=tracking')
-      
-      subject.should_not_receive(:log_error)
-      subject.call(env)
-    end
-    
     it 'allows overwriting the handling mechanism' do
       stub_app_call(app)
       set_request_cookies(env, 'foo=bar')
@@ -277,6 +224,69 @@ describe SafeCookies::Middleware do
       
       subject.call(env)
       subject.instance_variable_get('@custom_method_called').should == true
+    end
+    
+    context 'and it is configured to log unknown cookies' do
+    
+      before do
+        SafeCookies.configure do |config|
+          config.log_unknown_cookies = true
+        end
+      end
+    
+      it 'logs an error message' do
+        stub_app_call(app)
+        set_request_cookies(env, 'foo=bar')
+      
+        subject.should_receive(:log).with(/unknown cookies: foo/)
+        subject.call(env)
+      end
+    
+      it 'does not log an error if the (unregistered) cookie was initially set by the application' do
+        # application sets cookie
+        stub_app_call(app, :application_cookies => 'foo=bar; path=/some/path; secure')
+      
+        code, headers, response = subject.call(env)
+
+        received_cookies = extract_cookies(headers['Set-Cookie'])
+        received_cookies.should include('foo=bar') # sanity check
+      
+        # client returns with the cookie, `app` and `subject` are different
+        # objects than in the previous request
+        other_app = stub('application')
+        other_subject = described_class.new(other_app)
+      
+        stub_app_call(other_app)
+        set_request_cookies(env, *received_cookies)
+
+        other_subject.should_not_receive(:log)
+        other_subject.call(env)
+      end
+    
+      it 'does not log an error if the cookie is listed in the cookie configuration' do
+        SafeCookies.configure do |config|
+          config.register_cookie('foo', :expire_after => 3600)
+        end
+    
+        stub_app_call(app)
+        set_request_cookies(env, 'foo=bar')
+      
+        subject.should_not_receive(:log)
+        subject.call(env)
+      end
+    
+      it 'does not log an error if the cookie is ignored' do
+        SafeCookies.configure do |config|
+          config.ignore_cookie '__utma'
+        end
+
+        stub_app_call(app)
+        set_request_cookies(env, '__utma=tracking')
+      
+        subject.should_not_receive(:log)
+        subject.call(env)
+      end
+    
     end
     
   end

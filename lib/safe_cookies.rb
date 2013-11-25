@@ -64,6 +64,9 @@ module SafeCookies
       unknown_cookie_names = request_cookie_names - known_cookie_names
       
       if unknown_cookie_names.any?
+        message = "Request for '#{@request.url}' had unknown cookies: #{unknown_cookie_names.join(', ')}"
+        log(message) if @config.log_unknown_cookies
+
         handle_unknown_cookies(unknown_cookie_names)
       end
     end
@@ -128,11 +131,10 @@ module SafeCookies
     
     # API method
     def handle_unknown_cookies(cookie_names)
-      log_error("Request for '#{@request.url}' had unknown cookies: #{cookie_names.join(', ')}")
     end
     
-    def log_error(error_message)
-      message = '** [SafeCookies error] '
+    def log(error_message)
+      message = '** [SafeCookies] '
       message << error_message
       
       Rails.logger.error(message) if defined?(Rails)
