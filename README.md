@@ -10,10 +10,10 @@ to two separate things:
 
 ## Installation
 
-### Step 1
+#### Step 1
 Add `gem 'safe_cookies'` to your application's Gemfile, then run `bundle install`.
 
-### Step 2
+#### Step 2
 **Rails 3 and 4**: add the following lines to the application block in config/application.rb:
 
     require 'safe_cookies'
@@ -24,18 +24,23 @@ Add `gem 'safe_cookies'` to your application's Gemfile, then run `bundle install
     require 'safe_cookies'
     config.middleware.insert_before ActionController::Session::CookieStore, SafeCookies::Middleware
 
+#### Step 3
+Add a configuration block either just below the lines you added in step 2 or in
+an initializer (e.g. `config/initializers/safe_cookies.rb`).
+
+#### Done!
 
 Now all your cookies will be made `secure` and `HttpOnly`. But what if you need
 a cookie to be accessible via HTTP or Javascript?
 
+
 ### Having a cookie non-secure or non-HttpOnly
 Tell the middleware which cookies not to make `secure` or `HttpOnly` by
-registering them. Do it either just after the lines you added above or in an
-initializer (e.g. in `config/initializers/safe_cookies.rb`). The `:expire_after` option is required.
+registering them. The `:expire_after` option is required.
 
     SafeCookies.configure do |config|
-      config.register_cookie :default_language, :expire_after => 10.years, :secure => false
-      config.register_cookie :javascript_data, :expire_after => 1.day, :http_only => false
+      config.register_cookie 'default_language', :expire_after => 10.years, :secure => false
+      config.register_cookie 'javascript_data', :expire_after => 1.day, :http_only => false
     end
 
 ### Employing SafeCookies in apps that are already running in production
@@ -49,8 +54,8 @@ Carefully scan your app for cookies you are using. There's no easy way to find
 out if you missed one (but see below for some help the gem provides).
 
     SafeCookies.configure do |config|
-      config.register_cookie :remember_token, :expire_after => 1.year
-      config.register_cookie :last_action, :expire_after => 30.days, :path => '/commerce'
+      config.register_cookie 'remember_token', :expire_after => 1.year
+      config.register_cookie 'last_action', :expire_after => 30.days, :path => '/commerce'
     end
 
 Available options are: `:expire_after` (required)`, :path, :secure, :http_only`.
