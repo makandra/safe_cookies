@@ -11,7 +11,7 @@ malicious Javascript.
 Making a cookie `secure` tells the browser to only send the cookie over HTTPS
 connections, protecting it from being sniffed by a man-in-the-middle. (Setting a
 [HSTS](http://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) header
-achieves the same, but Safari < 7 and IE < 12 don't speak HSTS.)
+achieves the same, but Safari < 7 and IE < 11 don't speak HSTS.)
 
 SafeCookies will *additionally* rewrite all cookies the user is sending. **But**
 it can only do so, if the cookie was registered before (see below). It will rewrite
