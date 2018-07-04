@@ -1,3 +1,10 @@
+# This gem is no longer maintained!
+
+Read about [reasons and alternatives](https://makandracards.com/makandra/53693-rails-making-all-cookies-secure-to-pass-a-security-audit).
+
+
+--------------------
+
 # SafeCookies
 
 This gem has a middleware that will make all cookies secure, by setting the
