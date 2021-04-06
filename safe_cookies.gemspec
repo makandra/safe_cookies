@@ -7,6 +7,7 @@ Gem::Specification.new do |gem|
   gem.description   = %q{Make all cookies `secure` and `HttpOnly`.}
   gem.summary       = %q{Make all cookies `secure` and `HttpOnly`.}
   gem.homepage      = "http://www.makandra.de"
+  gem.license       = "MIT"
 
   gem.files         = `git ls-files`.split($\)
   gem.executables   = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
